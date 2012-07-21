@@ -3,7 +3,9 @@ import urlparse
 import httplib
 
 class JsonrpcServerError(jsonrpcch.JsonrpcException):
-	pass
+	def __init__(self, data):
+		super(JsonrpcServerError, self).__init__(str(data))
+		self.data = data
 
 class JsonrpcServer:
 	def __init__(self, url, version=None):
@@ -26,7 +28,7 @@ class JsonrpcServer:
 				holder["done"] = result
 			
 			def errorback(e):
-				raise JsonrpcServerError(str(e))
+				raise JsonrpcServerError(e)
 			
 			ch = jsonrpcch.Channel()
 			def sendout(data):

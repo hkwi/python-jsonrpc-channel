@@ -27,6 +27,10 @@ if __name__ == "__main__":
 		def echo_method(self, *args):
 			return args
 		
+		@jsonrpcmethod("fail")
+		def fail_method(self, *args):
+			raise jsonrpcch.jsonrpc_error_factory(5, "EIO")(args)
+		
 	from wsgiref.simple_server import make_server
 	httpd = make_server("", 8000, JsonrpcServer(Echo()))
 	httpd.handle_request()
