@@ -1,7 +1,20 @@
 python-jsonrpc-channel
 ======================
 
-jsonrpc channel I/O python implementation
+jsonrpc channel I/O python implementation. This library supports bidirectional communication.
+jsonrpcch.wsgi and jsonrpcch.proxy are just convenient classes that support typical use cases.
+
+Bidirectional communication channel can be build up by registering callbacks. There are two
+layers of the binary I/O layer and api I/O layer.
+
+binary I/O channel call/callback are:
+* sendout : callback that channel will sendout binary stream chunks.
+* feed : call this to feed incoming binary stream chunks.
+
+application method call/callback are:
+* register or register_server : callback that respond to incoming json method request.
+* call : call this to request json method call.
+
 
 <pre>
 import json
