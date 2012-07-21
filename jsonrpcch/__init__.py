@@ -109,9 +109,10 @@ class Channel:
 	def register_server(self, server_instance):
 		for x in dir(server_instance):
 			attr = getattr(server_instance, x)
-			method = getattr(attr, "__jsonrpcmethod__")
-			if callable(attr) and method:
-				self.server[method] = attr
+			if attr and hasattr(attr, "__jsonrpcmethod__"):
+				method = getattr(attr, "__jsonrpcmethod__")
+				if callable(attr) and method:
+					self.server[method] = attr
 	
 	def call(self, method, params, callback=None, errback=None, version=1):
 		req = {"method":method, "params":params}
