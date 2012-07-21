@@ -86,6 +86,12 @@ class Channel:
 				except Exception,e:
 					ret = {"result":None, "error":str(e)}
 				
+				if v2:
+					if "id" not in obj:
+						return
+				elif obj["id"] is None:
+					return
+				
 				ret["id"] = obj["id"]
 				if self.proxy is None:
 					self.proxy = Proxy()
