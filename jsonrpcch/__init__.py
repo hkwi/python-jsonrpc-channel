@@ -2,6 +2,35 @@ import json
 import uuid
 import codecs
 import traceback
+import warnings
+
+class JsonrpcException(Exception):
+	pass
+
+class InternalJsonrpcException(JsonrpcException):
+	def __str__(self):
+		return str(self.to_plain(True))
+	
+	def to_plain(self, v2=False):
+		if v2:
+			return {"code":self.code, "message":self.message, "data":self.data}
+		else:
+			return "%s: %s" % (self.message, str(self.data))
+
+def jsonrpc_error_factory(code, message):
+	class _JsonrpcException(InternalJsonrpcException):
+		def __init__(self, data=None):
+			super(_JsonrpcException, self).__init__(message)
+			self.data = data
+			self.code = code
+			self.message = message
+	return _JsonrpcException
+
+ParseError     = jsonrpc_error_factory(-32700, "Parse error")
+InvalidRequest = jsonrpc_error_factory(-32600, "Invalid Request")
+MethodNotFound = jsonrpc_error_factory(-32601, "Method not found")
+InvalidParams  = jsonrpc_error_factory(-32602, "Invalid params")
+InternalError  = jsonrpc_error_factory(-32603, "Internal error")
 
 class Feeder:
 	buf = ""
@@ -10,6 +39,11 @@ class Feeder:
 	jsondec = None # json text to object decoder
 	
 	def feed(self, binary):
+		"""
+		parse error : UnicodeDecodeError,ValueError
+		@return true if callback was called
+		"""
+		emit = False
 		if self.decoder is None:
 			self.decoder = codecs.getincrementaldecoder(self.encoding)()
 		buf = self.buf + self.decoder.decode(binary)
@@ -21,37 +55,27 @@ class Feeder:
 			except ValueError:
 				self.buf = buf
 				break
-			
-			try:
-				self.callback(obj)
-			except Exception,e:
-				self.errback(e)
-			
+		
+			emit = True
+			self.callback(obj)
+		
 			while pos<len(buf) and buf[pos] in "\r\n":
 				pos += 1
-			
+		
 			buf = buf[pos:]
+		return emit
 	
 	def callback(self, obj):
 		warnings.warn("feeder callback not registered")
-	
-	def errback(self, e):
-		traceback.print_exc()
 
 class Proxy:
 	encoding = "UTF-8"
 	
 	def call(self, obj):
-		try:
-			self.callback(json.dumps(obj).encode(self.encoding))
-		except Exception, e:
-			self.errback(e)
+		self.callback(json.dumps(obj).encode(self.encoding))
 	
 	def callback(self, binary):
 		warnings.warn("proxy callback not registered")
-	
-	def errback(self, e):
-		traceback.print_exc()
 
 class Channel:
 	encoding = "UTF-8"
@@ -63,19 +87,28 @@ class Channel:
 	def feed(self, data):
 		if self.feeder is None:
 			self.feeder = Feeder()
-			self.feeder.encoding = self.encoding
-			self.feeder.callback = self.dispatcher
-		self.feeder.feed(data)
+		self.feeder.encoding = self.encoding
+		self.feeder.callback = self.dispatcher
+		try:
+			return self.feeder.feed(data)
+		except JsonrpcException,e:
+			raise e
+		except ValueError,e:
+			raise ParseError(e)
+		except UnicodeDecodeError,e:
+			raise ParseError(e)
+		except Exception,e:
+			raise InternalError(e)
 	
 	def dispatcher(self, obj):
 		keys = obj.keys()
+		v2 = (obj.get("jsonrpc")=="2.0")
 		if "method" in keys:
 			method = obj["method"]
 			if method.startswith("rpc."):
 				# special method
-				pass
+				ret = {} # TODO:
 			elif method in self.server:
-				v2 = (obj.get("jsonrpc")=="2.0")
 				try:
 					if v2 and isinstance(obj["params"],dict):
 						result = self.server[method](**obj["params"])
@@ -83,31 +116,37 @@ class Channel:
 						result = self.server[method](*obj["params"])
 					
 					ret = {"result":result, "error":None}
+				except JsonrpcException,e:
+					ret = {"result":None, "error":e.to_plain(v2)}
 				except Exception,e:
-					ret = {"result":None, "error":str(e)}
-				
-				if v2:
-					if "id" not in obj:
-						return
-				elif obj["id"] is None:
-					return
-				
-				ret["id"] = obj["id"]
-				if self.proxy is None:
-					self.proxy = Proxy()
-					self.proxy.encoding = self.encoding
-					self.proxy.callback = self.sendout
-				self.proxy.call(ret)
+					ret = {"result":None, "error":InternalError(e).to_plain(v2)}
 			else:
-				raise ValueError("unhandled jsonrpc method")
+				ret = {"result":None, "error":MethodNotFound(method).to_plain(v2)}
 		elif "result" in keys and "error" in keys and "id" in keys:
 			(callback, errback) = self.callbacks.pop(obj["id"])
 			if obj["error"]:
 				errback(obj["error"])
 			else:
 				callback(obj["result"])
+			return
 		else:
-			raise ValueError("jsorpc format error(v1/v2)")
+			ret = {"result":None, "error":ParseError("jsorpc format error").to_plain(v2)}
+		
+		if v2:
+			if "id" not in obj:
+				if ret["error"]: warnings.warn(repr(ret))
+				return
+		elif obj["id"] is None:
+			if ret["error"]: warnings.warn(repr(ret))
+			return
+		
+		ret["id"] = obj["id"]
+		if self.proxy is None:
+			self.proxy = Proxy()
+			self.proxy.encoding = self.encoding
+			self.proxy.callback = self.sendout
+		
+		self.proxy.call(ret)
 	
 	def register(self, method, callback):
 		self.server[method] = callback
@@ -120,7 +159,7 @@ class Channel:
 				if callable(attr) and method:
 					self.server[method] = attr
 	
-	def call(self, method, params, callback=None, errback=None, version=1):
+	def call(self, method, params, callback=None, errback=None, version=None):
 		req = {"method":method, "params":params}
 		if version == 2:
 			req["jsonrpc"] = "2.0"

@@ -6,18 +6,20 @@ class JsonrpcServer:
 		self.server = server
 	
 	def __call__(self, environ, start_response):
-		self.result = None
+		holder = []
 		def sink(result):
-			self.result = result
+			holder.append(result)
 		
 		ch = jsonrpcch.Channel()
 		ch.register_server(self.server)
 		ch.sendout = sink
 		
 		length= int(environ.get('CONTENT_LENGTH', '0'))
-		ch.feed(environ['wsgi.input'].read(length))
-		start_response("200 OK", [("content-type",'application/json; charset=UTF-8'),])
-		return [self.result,]
+		if ch.feed(environ['wsgi.input'].read(length)):
+			start_response("200 OK", [("content-type",'application/json; charset=UTF-8'),])
+			return holder
+		
+		raise Exception("input broken?")
 
 if __name__ == "__main__":
 	class Echo:

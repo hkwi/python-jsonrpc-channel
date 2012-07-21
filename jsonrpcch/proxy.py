@@ -2,9 +2,13 @@ import jsonrpcch
 import urlparse
 import httplib
 
+class JsonrpcServerError(jsonrpcch.JsonrpcException):
+	pass
+
 class JsonrpcServer:
-	def __init__(self, url):
+	def __init__(self, url, version=None):
 		self.url = url
+		self.version = version
 	
 	def __getattr__(self, name):
 		def func(*params):
@@ -17,22 +21,24 @@ class JsonrpcServer:
 			else:
 				raise NotImplementedException("unknown scheme")
 			
-			self.result = None
-			def store_data(result):
-				self.result = result
+			holder = {}
+			def callback(result):
+				holder["done"] = result
+			
+			def errorback(e):
+				raise JsonrpcServerError(str(e))
 			
 			ch = jsonrpcch.Channel()
-			
 			def sendout(data):
 				con.request("POST", ps[1], data, {"Content-type":"application/json; charset=UTF-8"})
-				ch.feed(con.getresponse().read())
-			
+				if not ch.feed(con.getresponse().read()):
+					raise JsonrpcServerError("server response broken?")
 			ch.sendout = sendout
-			ch.call(name, params, callback=store_data)
 			
-			return self.result
+			ch.call(name, params, callback=callback, errback=errorback, version=self.version)
+			return holder["done"]
 		
 		return func
 
 if __name__=="__main__":
-	print JsonrpcServer("http://127.0.0.1:8000/").echo("hogehoge")
+	print JsonrpcServer("http://127.0.0.1:8000/", version=2).echo("hogehoge")
