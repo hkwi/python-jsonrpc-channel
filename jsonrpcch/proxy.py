@@ -33,3 +33,6 @@ class JsonrpcServer:
 			return self.result
 		
 		return func
+
+if __name__=="__main__":
+	print JsonrpcServer("http://127.0.0.1:8000/").echo("hogehoge")
