@@ -6,7 +6,7 @@ class JsonrpcProtocol(Protocol):
 	
 	def _ensure_channel(self):
 		if self.channel is None:
-			self.channel = Jsonrpcch.Channel()
+			self.channel = jsonrpcch.Channel()
 	
 	def connectionMade(self):
 		self._ensure_channel()
@@ -24,7 +24,7 @@ class JsonrpcProtocol(Protocol):
 	
 	def register_server(self, server_instance):
 		self._ensure_channel()
-		self.channel.register_server(method, server_instance)
+		self.channel.register_server(server_instance)
 	
 	def call(self, method, params, version):
 		"""
