@@ -1,3 +1,5 @@
+# coding: UTF-8
+# This code is available from http://github.com/hkwi/python-jsonrpc-channel
 import jsonrpcch
 import urlparse
 import httplib

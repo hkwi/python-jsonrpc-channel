@@ -1,3 +1,5 @@
+# coding: UTF-8
+# This code is available from http://github.com/hkwi/python-jsonrpc-channel
 from twisted.internet.protocol import Factory, Protocol, ProcessProtocol
 import jsonrpcch
 
