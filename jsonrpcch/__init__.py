@@ -60,7 +60,7 @@ class Feeder:
 			
 			emit = True
 			self.callback(obj)
-		
+			
 			while pos<len(buf) and buf[pos] in "\r\n":
 				pos += 1
 		
@@ -69,7 +69,7 @@ class Feeder:
 	
 	def callback(self, obj):
 		warnings.warn("feeder callback not registered")
-
+	
 class Proxy:
 	encoding = "UTF-8"
 	
@@ -91,16 +91,7 @@ class Channel:
 			self.feeder = Feeder()
 		self.feeder.encoding = self.encoding
 		self.feeder.callback = self.dispatcher
-		try:
-			return self.feeder.feed(data)
-		except JsonrpcException,e:
-			raise e
-		except ValueError,e:
-			raise ParseError(e)
-		except UnicodeDecodeError,e:
-			raise ParseError(e)
-		except Exception,e:
-			raise InternalError(e)
+		return self.feeder.feed(data)
 	
 	def dispatcher(self, obj):
 		keys = obj.keys()
@@ -183,6 +174,10 @@ class Channel:
 	
 	def sendout(self, binary):
 		pass
+	
+	def reset(self):
+		if self.feeder:
+			self.feeder = None
 
 import functools
 def jsonrpcmethod(method):
