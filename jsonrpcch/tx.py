@@ -25,20 +25,3 @@ class JsonrpcProtocol(Protocol):
 	def register_server(self, server_instance):
 		self._ensure_channel()
 		self.channel.register_server(server_instance)
-	
-	def call(self, method, params, version):
-		"""
-		DO CALL unpause, when you've done adding callbacks.
-		"""
-		d = defer.Deferred()
-		d.pause()
-		self.channel.call(method, params, callback=d.callback, errback=d.errback, version=version)
-		return d
-
-class JsonfeedProtocolProtocol(ProcessProtocol):
-	feeder = None
-	def outReveived(self, data):
-		if self.feeder is None:
-			self.feeder = jsonrpcch.Feeder()
-			self.feeder.callback = self.callback
-		self.feeder.feed(data)
