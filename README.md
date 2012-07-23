@@ -34,3 +34,7 @@ ch.sendout = store_result
 ch.feed(json.dumps({"method":"echo","params":["hello","world"],"id":1}))
 print result
 </pre>
+
+LICENSE
+-------
+Apache 2.0 license
