@@ -91,8 +91,8 @@ class Channel:
 	def feed(self, data):
 		if self.feeder is None:
 			self.feeder = Feeder()
-		self.feeder.encoding = self.encoding
-		self.feeder.callback = self.dispatcher
+			self.feeder.encoding = self.encoding
+			self.feeder.callback = self.dispatcher
 		return self.feeder.feed(data)
 	
 	def dispatcher(self, obj):
