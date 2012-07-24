@@ -7,7 +7,7 @@ import httplib
 class JsonrpcServerError(jsonrpcch.JsonrpcException):
 	def __init__(self, data):
 		super(JsonrpcServerError, self).__init__(str(data))
-		self.data = data
+		self.value = data
 
 class JsonrpcServer:
 	def __init__(self, url, version=None):
