@@ -111,20 +111,20 @@ class Channel:
 				# special method
 				ret = {} # TODO:
 			elif method in self.server:
-				params = request.get("params")
+				params = obj.get("params")
 				try:
-					if is_v2(request) and isinstance(params, dict):
+					if is_v2(obj) and isinstance(params, dict):
 						result = self.server[method](**params)
 					else:
 						result = self.server[method](*params)
 					
-					self.serve_result_fixup(result)
+					self.serve_result_fixup(obj, result)
 				except JsonrpcException,e:
-					self.serve_error(e)
+					self.serve_error(obj, e)
 				except Exception,e:
-					self.serve_error(e)
+					self.serve_error(obj, e)
 			else:
-				self.serve_error(MethodNotFound(method))
+				self.serve_error(obj, MethodNotFound(method))
 		elif "result" in keys and "error" in keys and "id" in keys:
 			(callback, errback) = self.callbacks.pop(obj["id"])
 			if obj["error"]:
@@ -132,7 +132,7 @@ class Channel:
 			else:
 				callback(obj["result"])
 		else:
-			self.serve_error(ParseError("jsorpc format error"))
+			self.serve_error(obj, ParseError("jsorpc format error"))
 	
 	def serve_result_fixup(self, request, result):
 		self.serve_result(request, result)
@@ -141,18 +141,18 @@ class Channel:
 		self._serve_response(request, {"result":result, "error":None})
 	
 	def serve_error(self, request, exception):
-		if isinstance(exception, JsonrpcException):
-			error = e.to_palin(is_v2(request))
+		if isinstance(exception, InternalJsonrpcException):
+			error = exception.to_plain(is_v2(request))
 		else:
-			error = InternalError(e).to_plain(is_v2(request))
+			error = InternalError(exception).to_plain(is_v2(request))
 		self._serve_response(request, {"result":None, "error":error})
 	
 	def _serve_response(self, request, response):
 		if is_v2(request):
-			if "id" not in obj:
+			if "id" not in request:
 				if ret["error"]: warnings.warn(repr(ret))
 				return
-		elif obj["id"] is None:
+		elif request["id"] is None:
 			if ret["error"]: warnings.warn(repr(ret))
 			return
 		
