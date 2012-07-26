@@ -170,9 +170,9 @@ class Channel:
 		for x in dir(server_instance):
 			attr = getattr(server_instance, x)
 			if attr and hasattr(attr, "__jsonrpcmethod__"):
-				method = getattr(attr, "__jsonrpcmethod__")
-				if callable(attr) and method:
-					self.server[method] = attr
+				for method in getattr(attr, "__jsonrpcmethod__"):
+					if callable(attr) and method:
+						self.server[method] = attr
 	
 	def call(self, method, params, callback=None, errback=None, version=None):
 		req = {"method":method, "params":params}
@@ -208,6 +208,9 @@ def jsonrpcmethod(method):
 		def wrapper(*args, **kwarg):
 			return func(*args, **kwarg)
 		
-		wrapper.__jsonrpcmethod__ = method
+		if hasattr(wrapper, __jsonrpcmethod__):
+			wrapper.__jsonrpcmethod__.add(method)
+		else:
+			wrapper.__jsonrpcmethod__ = set((method,))
 		return wrapper
 	return factory
