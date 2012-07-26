@@ -3,6 +3,7 @@
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import Factory, Protocol, ProcessProtocol
 from twisted.web.resource import IResource
+from twisted.web.server import NOT_DONE_YET
 from zope.interface import implements
 import jsonrpcch
 
@@ -13,7 +14,7 @@ class DeferredChannel(jsonrpcch.Channel):
 				self.serve_error(request, fail.value)
 			result.addCallback(self.serve_result, catch_result_fail)
 		else:
-			result.serve_result(result)
+			self.serve_result(request, result)
 
 class JsonrpcProtocol(Protocol):
 	channel = None
@@ -49,7 +50,7 @@ class JsonrpcResource:
 		self.server = server
 	
 	def render(self, request):
-		if not request.getHeader("content-type").startswith("application/json") or self.method != "POST":
+		if not request.getHeader("content-type").startswith("application/json") or request.method != "POST":
 			request.setResponseCode(400)
 			request.finish()
 			return
@@ -57,9 +58,9 @@ class JsonrpcResource:
 		channel = DeferredChannel()
 		channel.register_server(self.server)
 		def body_sendout(binary):
-			request.setHeader("content-type", "application/json; charset=%s" % (proxy.encoding,))
-			request.setHeader("content-length", len(binary_or_error))
-			request.write(binary_or_error)
+			request.setHeader("content-type", "application/json; charset=%s" % (channel.encoding,))
+			request.setHeader("content-length", len(binary))
+			request.write(binary)
 			request.finish()
 		
 		channel.sendout = body_sendout

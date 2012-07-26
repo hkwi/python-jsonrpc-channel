@@ -34,7 +34,7 @@ class JsonrpcServer:
 			
 			ch = jsonrpcch.Channel()
 			def sendout(data):
-				con.request("POST", ps[1], data, {"Content-type":"application/json; charset=UTF-8"})
+				con.request("POST", ps[1], data, {"Content-type":"application/json; charset=UTF-8", "Content-length":"%d" % (len(data),)})
 				if not ch.feed(con.getresponse().read()):
 					raise JsonrpcServerError("server response broken?")
 			ch.sendout = sendout
