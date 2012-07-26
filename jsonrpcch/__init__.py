@@ -208,7 +208,7 @@ def jsonrpcmethod(method):
 		def wrapper(*args, **kwarg):
 			return func(*args, **kwarg)
 		
-		if hasattr(wrapper, __jsonrpcmethod__):
+		if hasattr(wrapper, "__jsonrpcmethod__"):
 			wrapper.__jsonrpcmethod__.add(method)
 		else:
 			wrapper.__jsonrpcmethod__ = set((method,))
