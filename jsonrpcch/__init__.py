@@ -150,10 +150,10 @@ class Channel:
 	def _serve_response(self, request, response):
 		if is_v2(request):
 			if "id" not in request:
-				if ret["error"]: warnings.warn(repr(ret))
+				if response["error"]: warnings.warn(repr(response))
 				return
 		elif request["id"] is None:
-			if ret["error"]: warnings.warn(repr(ret))
+			if response["error"]: warnings.warn(repr(response))
 			return
 		
 		response["id"] = request["id"]
