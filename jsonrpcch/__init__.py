@@ -115,8 +115,10 @@ class Channel:
 				try:
 					if is_v2(obj) and isinstance(params, dict):
 						result = self.server[method](**params)
-					else:
+					elif isinstance(params, list):
 						result = self.server[method](*params)
+					else:
+						raise InvalidRequest("params typed as %s invalid" % (params.__class__.__name__,))
 					
 					self.serve_result_fixup(obj, result)
 				except JsonrpcException,e:
@@ -152,7 +154,7 @@ class Channel:
 			if "id" not in request:
 				if response["error"]: warnings.warn(repr(response))
 				return
-		elif request["id"] is None:
+		elif request.get("id") is None:
 			if response["error"]: warnings.warn(repr(response))
 			return
 		
