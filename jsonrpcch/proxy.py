@@ -18,8 +18,11 @@ class _Method:
 	def __getattr__(self, name):
 		return _Method(self.__serv, "%s.%s" % (self.__name, name))
 	
-	def __call__(self, *params):
+	def __call__(self, *params, **kwargs):
 		serv = self.__serv
+		
+		if kwargs and (not params) and serv.version==2:
+			params = kwargs
 		
 		ps = urlparse.urlparse(serv.url)
 		hp = ps[1].split(":",1)
