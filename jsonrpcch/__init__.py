@@ -134,7 +134,7 @@ class Channel:
 			else:
 				callback(obj["result"])
 		else:
-			self.serve_error(obj, ParseError("jsorpc format error"))
+			self.serve_error(obj, ParseError("jsonrpc format error"))
 	
 	def serve_result_fixup(self, request, result):
 		self.serve_result(request, result)
