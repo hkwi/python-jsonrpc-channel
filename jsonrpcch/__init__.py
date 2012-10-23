@@ -150,15 +150,8 @@ class Channel:
 		self._serve_response(request, {"result":None, "error":error})
 	
 	def _serve_response(self, request, response):
-		if is_v2(request):
-			if "id" not in request:
-				if response["error"]: warnings.warn(repr(response))
-				return
-		elif request.get("id") is None:
-			if response["error"]: warnings.warn(repr(response))
-			return
-		
-		response["id"] = request["id"]
+		if "id" in request:
+			response["id"] = request["id"]
 		if self.proxy is None:
 			self.proxy = Proxy()
 			self.proxy.encoding = self.encoding
