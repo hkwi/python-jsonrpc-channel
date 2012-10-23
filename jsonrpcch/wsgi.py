@@ -6,6 +6,7 @@ from jsonrpcch import jsonrpcmethod
 class JsonrpcServer:
 	def __init__(self, server):
 		self.server = server
+		self.extra_headers = []
 	
 	def __call__(self, environ, start_response):
 		holder = []
@@ -18,7 +19,7 @@ class JsonrpcServer:
 		
 		length= int(environ.get('CONTENT_LENGTH', '0'))
 		if ch.feed(environ['wsgi.input'].read(length)):
-			start_response("200 OK", [("content-type",'application/json; charset=UTF-8'),])
+			start_response("200 OK", self.extra_headers + [("content-type",'application/json; charset=UTF-8'),])
 			return holder
 		
 		raise Exception("input broken?")
