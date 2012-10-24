@@ -60,10 +60,8 @@ class Feeder:
 			try:
 				obj,pos = self.jsondec.raw_decode(buf)
 			except ValueError,e:
-				if e.args[0] == "No JSON object could be decoded":
-					self.buf = buf
-					break
-				raise e
+				self.buf = buf
+				break
 			
 			emit = True
 			self.callback(obj)
