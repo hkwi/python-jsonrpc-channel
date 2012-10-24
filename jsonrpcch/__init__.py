@@ -103,42 +103,86 @@ class Channel:
 		return self.feeder.feed(data)
 	
 	def dispatcher(self, obj):
-		if "method" in obj:
-			method = obj["method"]
-			if method.startswith("rpc."):
-				# special method
-				ret = {} # TODO:
-			elif method in self.server:
-				params = obj.get("params")
-				try:
-					if is_v2(obj) and isinstance(params, dict):
-						result = self.server[method](**params)
-					elif isinstance(params, list):
-						result = self.server[method](*params)
+		if is_v2(obj):
+			if "id" in obj:
+				if "method" in obj:
+					method = obj["method"]
+					if method.startswith("rpc."):
+						# special method
+						ret = {} # TODO:
+					elif method in self.server:
+						params = obj.get("params")
+						try:
+							if isinstance(params, list):
+								result = self.server[method](*params)
+							elif isinstance(params, dict)
+								result = self.server[method](**params)
+							else:
+								raise InvalidParams("typed %s" % (params.__class__.__name__,))
+							self.serve_result_fixup(obj, result)
+						except Exception,e:
+							self.serve_error(obj, e)
 					else:
-						raise InvalidRequest("params typed as %s invalid" % (params.__class__.__name__,))
-					
-					self.serve_result_fixup(obj, result)
-				except JsonrpcException,e:
-					self.serve_error(obj, e)
-				except Exception,e:
-					self.serve_error(obj, e)
+						self.serve_error(obj, MethodNotFound(method))
+				else:
+					recv = self.callbacks.pop(obj["id"])
+					if recv:
+						(callback, errback) = recv
+						if "result" in obj:
+							callback(obj["result"])
+						elif "error" in obj:
+							errback(obj["error"])
+						else:
+							raise ParseError("Got invalid response (id %s)" % repr(id))
+					else:
+						raise ParseError("Got unknown response id %s" % repr(id))
 			else:
-				self.serve_error(obj, MethodNotFound(method))
-		elif obj.get("id"):
-			(callback, errback) = self.callbacks.pop(obj["id"])
-			if obj.get("error"):
-				errback(obj["error"])
-			elif "result" in obj:
-				callback(obj["result"])
+				if callable(self.notified): self.notified(obj)
+		elif "id" in obj:
+			id = obj["id"]
+			if "method" in obj:
+				method = obj["method"]
+				if method in self.server:
+					params = obj.get("params")
+					if isinstance(params, list):
+						try:
+							result = self.server[method](*params)
+							self.serve_result_fixup(obj, result)
+						except Exception,e:
+							self.serve_error(obj, e)
+					else:
+						if id is None:
+							if callable(self.notified): self.notified(obj)
+						else:
+							self.serve_error(obj, InvalidParams("typed %s" % (params.__class__.__name__,)))
+				else:
+					if id is None:
+						if callable(self.notified): self.notified(obj)
+					else:
+						self.serve_error(obj, MethodNotFound(method))
 			else:
-				callback()
-		elif callable(self.notified):
-			self.notified(obj)
+				recv = self.callbacks.pop(obj["id"])
+				if recv:
+					(callback, errback) = recv
+					if obj.get("error"):
+						errback(obj["error"])
+					elif "result" in obj:
+						callback(obj["result"])
+					else:
+						callback()
+				else:
+					if id is None:
+						if callable(self.notified): self.notified(obj)
+					else:
+						raise ParseError("Got unknown response id %s" % repr(id))
 		else:
-			self.serve_error(obj, ParseError("Could not handle jsonrpc message"))
+			if callable(self.notified):
+				self.notified(obj)
+			else:
+				self.serve_error(obj, ParseError("Could not handle jsonrpc message"))
 	
 	def serve_result_fixup(self, request, result):
+		# You can replace this fixup.
 		self.serve_result(request, result)
 	
 	def serve_result(self, request, result):
