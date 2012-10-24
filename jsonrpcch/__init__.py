@@ -115,7 +115,7 @@ class Channel:
 						try:
 							if isinstance(params, list):
 								result = self.server[method](*params)
-							elif isinstance(params, dict)
+							elif isinstance(params, dict):
 								result = self.server[method](**params)
 							else:
 								raise InvalidParams("typed %s" % (params.__class__.__name__,))
