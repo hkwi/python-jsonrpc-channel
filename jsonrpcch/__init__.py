@@ -161,7 +161,10 @@ class Channel:
 		self.proxy.call(response)
 	
 	def register(self, method, callback):
-		self.server[method] = callback
+		if callable(callback):
+			self.server[method] = callback
+		else:
+			raise ValueError("argument is not a callable")
 	
 	def register_server(self, server_instance):
 		for x in dir(server_instance):
@@ -179,11 +182,17 @@ class Channel:
 			req["id"] = None
 		
 		if callback:
-			id = str(uuid.uuid1())
-			req["id"] = id
-			if errback is None:
-				errback = lambda x:traceback.print_exc()
-			self.callbacks[id] = (callback, errback)
+			if callable(callback):
+				id = str(uuid.uuid1())
+				req["id"] = id
+				if not callable(errback):
+					if errback is None:
+						errback = lambda x:traceback.print_exc()
+					else:
+						raise ValueError("errback is not a callable")
+				self.callbacks[id] = (callback, errback)
+			else:
+				raise ValueError("callback is not a callable")
 		
 		if self.proxy is None:
 			self.proxy = Proxy()
