@@ -89,6 +89,7 @@ class Proxy:
 
 class Channel:
 	encoding = "UTF-8"
+	notified = None
 	callbacks = {}
 	feeder = None
 	proxy = None
@@ -102,8 +103,7 @@ class Channel:
 		return self.feeder.feed(data)
 	
 	def dispatcher(self, obj):
-		keys = obj.keys()
-		if "method" in keys:
+		if "method" in obj:
 			method = obj["method"]
 			if method.startswith("rpc."):
 				# special method
@@ -125,14 +125,18 @@ class Channel:
 					self.serve_error(obj, e)
 			else:
 				self.serve_error(obj, MethodNotFound(method))
-		elif "result" in keys and "error" in keys and "id" in keys:
+		elif obj.get("id"):
 			(callback, errback) = self.callbacks.pop(obj["id"])
-			if obj["error"]:
+			if obj.get("error"):
 				errback(obj["error"])
-			else:
+			elif "result" in obj:
 				callback(obj["result"])
+			else:
+				callback()
+		elif callable(self.notified):
+			self.notified(obj)
 		else:
-			self.serve_error(obj, ParseError("jsonrpc format error"))
+			self.serve_error(obj, ParseError("Could not handle jsonrpc message"))
 	
 	def serve_result_fixup(self, request, result):
 		self.serve_result(request, result)
