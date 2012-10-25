@@ -109,7 +109,7 @@ class Channel:
 					method = obj["method"]
 					if method.startswith("rpc."):
 						# special method
-						ret = {} # TODO:
+						self.serve_error(obj, Exception("not supported"))
 					elif method in self.server:
 						params = obj.get("params")
 						try:
@@ -186,18 +186,26 @@ class Channel:
 		self.serve_result(request, result)
 	
 	def serve_result(self, request, result):
-		self._serve_response(request, {"result":result, "error":None})
+		if is_v2(request):
+			self._serve_response(request, {"result":result})
+		else:
+			self._serve_response(request, {"result":result, "error":None})
 	
 	def serve_error(self, request, exception):
 		if isinstance(exception, InternalJsonrpcException):
 			error = exception.to_plain(is_v2(request))
 		else:
 			error = InternalError(exception).to_plain(is_v2(request))
-		self._serve_response(request, {"result":None, "error":error})
+		if is_v2(request):
+			self._serve_response(request, {"error":error})
+		else:
+			self._serve_response(request, {"result":None, "error":error})
 	
 	def _serve_response(self, request, response):
 		if "id" in request:
 			response["id"] = request["id"]
+		if is_v2(request):
+			response["jsonrpc"] = "2.0"
 		if self.proxy is None:
 			self.proxy = Proxy()
 			self.proxy.encoding = self.encoding
