@@ -81,8 +81,11 @@ class Proxy:
 	"""
 	encoding = "UTF-8"
 	
+	def __init__(self, default=str):
+		self.json_encoder_default = default
+	
 	def call(self, obj):
-		self.callback(json.dumps(obj).encode(self.encoding))
+		self.callback(json.dumps(obj, default=self.json_encoder_default).encode(self.encoding))
 	
 	def callback(self, binary):
 		warnings.warn("proxy callback not registered")
