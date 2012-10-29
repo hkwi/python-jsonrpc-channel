@@ -43,6 +43,8 @@ class _Method:
 		callback = _CaptureData()
 		
 		def errback(e):
+			if callable(serv.errback):
+				serv.errback(e)
 			raise JsonrpcServerError(e)
 		
 		ch = jsonrpcch.Channel()
@@ -60,9 +62,10 @@ class _Method:
 
 
 class JsonrpcServer:
-	def __init__(self, url, version=None):
+	def __init__(self, url, version=None, errback=None):
 		self.url = url
 		self.version = version
+		self.errback = errback
 	
 	def __getattr__(self, name):
 		return _Method(self, name)
