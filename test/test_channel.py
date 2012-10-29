@@ -113,6 +113,15 @@ class TestChannelIo:
 		ok_(errback.captured)
 		ok_(errback.data)
 
+		callback = CaptureData()
+		errback = CaptureData()
+		ch.call("fail", [], callback=callback, errback=errback, version=2)
+		ok_(errback.captured)
+		ok_(errback.data)
+		ok_(isinstance(errback.data, dict))
+		if "code" in errback.data:
+			ok_(isinstance(errback.data["code"],int))
+
 	def test_callback_alias(self,):
 		ch = jsonrpcch.Channel()
 		ch.register_server(Echo())
