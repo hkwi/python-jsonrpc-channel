@@ -9,6 +9,13 @@ class JsonrpcServerError(jsonrpcch.JsonrpcException):
 		super(JsonrpcServerError, self).__init__(str(data))
 		self.value = data
 
+class _CaptureData:
+	def __init__(self,):
+		self.captured = False
+	
+	def __call__(self, data):
+		self.captured = True
+		self.data = data
 
 class _Method:
 	def __init__(self, serv, name):
@@ -33,11 +40,9 @@ class _Method:
 		else:
 			raise NotImplementedException("unknown scheme")
 		
-		holder = {}
-		def callback(result):
-			holder["done"] = result
+		callback = _CaptureData()
 		
-		def errorback(e):
+		def errback(e):
 			raise JsonrpcServerError(e)
 		
 		ch = jsonrpcch.Channel()
@@ -47,8 +52,11 @@ class _Method:
 				raise JsonrpcServerError("server response broken?")
 		ch.sendout = sendout
 		
-		ch.call(self.__name, params, callback=callback, errback=errorback, version=serv.version)
-		return holder["done"]
+		ch.call(self.__name, params, callback=callback, errback=errback, version=serv.version)
+		if callback.captured:
+			return callback.data
+		else:
+			raise JsonrpcServerError("no response from server")
 
 
 class JsonrpcServer:
