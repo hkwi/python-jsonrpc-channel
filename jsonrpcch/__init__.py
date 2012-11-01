@@ -96,7 +96,8 @@ class Channel:
 	callbacks = {}
 	feeder = None
 	proxy = None
-	server = {}
+	server_methods = {}
+	logname = None
 	
 	def feed(self, data):
 		if self.feeder is None:
@@ -104,6 +105,22 @@ class Channel:
 			self.feeder.encoding = self.encoding
 			self.feeder.callback = self.dispatcher
 		return self.feeder.feed(data)
+	
+	def call_method(self, method, byname, params):
+		result = None
+		try:
+			if byname:
+				result = self.server_methods[method](**params)
+			else:
+				result = self.server_methods[method](*params)
+		except Exception,e:
+			if self.logname:
+				logging.getLogger(self.logname).error("%s %s" % (method, repr(params)), exc_info=1)
+			raise e
+		
+		if self.logname:
+			logging.getLogger(self.logname).info("%s %s" % (method, repr(params)))
+		return result
 	
 	def dispatcher(self, obj):
 		if is_v2(obj):
@@ -113,13 +130,13 @@ class Channel:
 					if method.startswith("rpc."):
 						# special method
 						self.serve_error(obj, Exception("not supported"))
-					elif method in self.server:
-						params = obj.get("params")
+					elif method in self.server_methods:
+						params = obj.get("params", [])
 						try:
 							if isinstance(params, list):
-								result = self.server[method](*params)
+								result = self.call_method(method, False, params)
 							elif isinstance(params, dict):
-								result = self.server[method](**params)
+								result = self.call_method(method, True, params)
 							else:
 								raise InvalidParams("typed %s" % (params.__class__.__name__,))
 							self.serve_result_fixup(obj, result)
@@ -138,18 +155,21 @@ class Channel:
 						else:
 							raise ParseError("Got invalid response (id %s)" % repr(id))
 					else:
-						raise ParseError("Got unknown response id %s" % repr(id))
+						warnings.warn("Got unknown response id: %s" % repr(obj))
 			else:
-				if callable(self.notified): self.notified(obj)
+				if callable(self.notified):
+					self.notified(obj)
+				else:
+					warnings.warn("Could not handle jsonrpc message: %s" % repr(obj))
 		elif "id" in obj:
 			id = obj["id"]
 			if "method" in obj:
 				method = obj["method"]
-				if method in self.server:
-					params = obj.get("params")
+				if method in self.server_methods:
+					params = obj.get("params", [])
 					if isinstance(params, list):
 						try:
-							result = self.server[method](*params)
+							result = self.call_method(method, False, params)
 							self.serve_result_fixup(obj, result)
 						except Exception,e:
 							self.serve_error(obj, e)
@@ -177,12 +197,12 @@ class Channel:
 					if id is None:
 						if callable(self.notified): self.notified(obj)
 					else:
-						raise ParseError("Got unknown response id %s" % repr(id))
+						warnings.warn("Got unknown response id: %s" % repr(obj))
 		else:
 			if callable(self.notified):
 				self.notified(obj)
 			else:
-				self.serve_error(obj, ParseError("Could not handle jsonrpc message"))
+				warnings.warn("Could not handle jsonrpc message: %s" % repr(obj))
 	
 	def serve_result_fixup(self, request, result):
 		# You can replace this fixup.
@@ -217,7 +237,7 @@ class Channel:
 	
 	def register(self, method, callback):
 		if callable(callback):
-			self.server[method] = callback
+			self.server_methods[method] = callback
 		else:
 			raise ValueError("argument is not a callable")
 	
@@ -227,7 +247,7 @@ class Channel:
 			if attr and hasattr(attr, "__jsonrpcmethod__"):
 				for method in getattr(attr, "__jsonrpcmethod__"):
 					if callable(attr) and method:
-						self.server[method] = attr
+						self.server_methods[method] = attr
 	
 	def call(self, method, params, callback=None, errback=None, version=None):
 		req = {"method":method, "params":params}

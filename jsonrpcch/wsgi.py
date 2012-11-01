@@ -4,9 +4,10 @@ import jsonrpcch
 from jsonrpcch import jsonrpcmethod
 
 class JsonrpcServer:
-	def __init__(self, server):
+	def __init__(self, server, logname=None):
 		self.server = server
 		self.extra_headers = []
+		self.logname = logname
 	
 	def __call__(self, environ, start_response):
 		holder = []
@@ -16,6 +17,7 @@ class JsonrpcServer:
 		ch = jsonrpcch.Channel()
 		ch.register_server(self.server)
 		ch.sendout = sink
+		ch.logname = self.logname
 		
 		length= int(environ.get('CONTENT_LENGTH', '0'))
 		if ch.feed(environ['wsgi.input'].read(length)):
