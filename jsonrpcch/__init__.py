@@ -5,6 +5,7 @@ import uuid
 import codecs
 import traceback
 import warnings
+import logging
 
 class JsonrpcException(Exception):
 	pass
