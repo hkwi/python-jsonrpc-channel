@@ -98,7 +98,7 @@ class TestChannelIo:
 		eq_(callback.data, [])
 
 		callback = CaptureData()
-		ch.call("echo", [], callback=callback, version=2)
+		ch.call("echo", {}, callback=callback, version=2)
 		ok_(callback.captured)
 		eq_(callback.data, [])
 	
@@ -115,7 +115,7 @@ class TestChannelIo:
 
 		callback = CaptureData()
 		errback = CaptureData()
-		ch.call("fail", [], callback=callback, errback=errback, version=2)
+		ch.call("fail", {}, callback=callback, errback=errback, version=2)
 		ok_(errback.captured)
 		ok_(errback.data)
 		ok_(isinstance(errback.data, dict))
